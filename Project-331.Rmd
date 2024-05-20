@@ -1,0 +1,226 @@
+---
+title: "Project-331"
+author: "Xuan Nguyen and Jullian Alcantara"
+date: "2024-04-02"
+output: pdf_document
+---
+
+```{r}
+library(ggplot2)
+```
+
+
+# 1. Knee Specific Pain Scale (Higher scores indicate more severe pain)
+```{r}
+placebo <- c(59.5,47.9,50.8,50.1,50.0,53.6,55.6,52.5)
+lavage <-  c(59.3,51.9,52.4,53.7,54.8,57.8,55.4,56.7)
+debride <- c(59.3,53.2,49.9,49.9,52.0,53.3,50.7,54.0)
+time <- factor(c("before", "2wk", "6wk", "3mo", "6mo", "1yr", "18mo", "2yr"), levels = c("before", "2wk", "6wk", "3mo", "6mo", "1yr", "18mo", "2yr"))
+dat1 <- data.frame(placebo, lavage, debride, time)
+dat1
+```
+
+## Exploring the data
+
+```{r}
+summary(dat1)
+```
+
+
+
+```{r}
+library(reshape2)
+dat1_melted <- melt(dat1, id.vars = "time")
+
+ggplot(dat1_melted, aes(x = variable, y = value, fill = variable)) +
+  geom_boxplot() +
+  labs(x = "Treatment", y = "Value", fill = "Treatment") +
+  scale_fill_manual(values = c("red", "blue", "green")) +
+  theme_minimal()
+```
+
+
+
+
+
+```{r}
+library(reshape2)
+library(ggplot2)
+dat1_melted <- melt(dat1, id.vars = "time")
+
+# Plot using ggplot2
+ggplot(dat1_melted, aes(x = time, y = value, color = variable, group= variable)) +
+  geom_point()+
+  geom_line() +
+  labs(x = "Time", y = "Pain Scores", color = "Treatment") +
+  scale_color_manual(values = c("placebo" = "red", "lavage" = "blue", "debride" = "green")) +
+  theme_minimal()
+```
+
+```{r}
+group <- rep(c(1,2,3), each = 8)
+knee_pain <- c(59.5,47.9,50.8,50.1,50.0,53.6,55.6,52.5,59.3,51.9,52.4,53.7,54.8,57.8,55.4,56.7,59.3,53.2,49.9,49.9,52.0,53.3,50.7,54.0)
+dat_KSPS <- data.frame(group, knee_pain)
+dat_KSPS$fgroup <- as.factor(dat_KSPS$group)
+dat_KSPS
+```
+
+## Perform ANOVA to test the hypothesis that all three treatments have a same effect
+### Analysis
+
+**Null hypothesis**: All three treatments have a same treatment effect (or treatment means)
+$H_0$: $\mu_1 = \mu_2\ = \mu_3$
+
+**Alternative hypothesis**: Three treatments have different effect (or treatment means)
+$H_1$: at least a pair of $\mu_i$ and $\mu_j$ is different
+
+
+```{r}
+library(car)
+model1 <- lm(knee_pain ~ fgroup, data = dat_KSPS)
+Anova(model1, type =2)
+```
+**Conclusion** We do not evidence to conclude that three treatments have different effect. In other words,  at no point the intervention groups have greater pain relief than placebo group.
+
+## Design a contrast 
+
+```{r}
+library(emmeans)
+lsmPain<- lsmeans(model1, ~fgroup)
+print(lsmPain)
+```
+
+### Using Tukey method for all pairwise comparisons
+    
+```{r}
+tk1<-summary(contrast(lsmPain, method = "pairwise", adjust = "tukey"),
+    infer=c(T,T), level = 0.95)
+tk1
+```
+### Using Dunnett's method to comparing each treatment with the control group
+
+```{r}
+dn <- summary(contrast(lsmPain, method = "trt.vs.ctrl", adjust = "mtv"),
+    infer=c(T,F), level = 0.95, side = "two-sided")
+dn
+```
+
+**Conclusion**: The results of comparison draws the same conclusion. There is no difference in reducing knee-pain between either lavage group or debridement group with placebo group.
+    
+```{r}
+plot(tk1)
+```
+## Model checking
+
+
+```{r}
+par(mfrow = c(1,2))
+plot(model1)
+```
+There is no pattern in the residual plot, so the equal variance is satisfied
+
+In the QQ-plot, there are some data points away from the line; we are not sure the normality assumption is satisfied so we use 'Shapiro.test' to check this assumption.
+
+```{r}
+shapiro.test(model1$residuals)
+```
+Since p-value > alpha = 0.05, it supports the null hypothesis of normality. 
+
+
+# Physical Functioning Scale (Higher scores indicate pooer functioning)
+
+```{r}
+placebo <- c(48.5,48.3,45.9,47.3,47.0,45.6,48.5,47.7)
+lavage <- c(50.0,53.0,49.5,48.8,49.4,50.4,51.2,53.2)
+debride <-c(52.1,56.0,51.7,49.5,49.8,52.5,52.8,52.6)
+time <- factor(c("before", "2wk", "6wk", "3mo", "6mo", "1yr", "18mo", "2yr"), levels = c("before", "2wk", "6wk", "3mo", "6mo", "1yr", "18mo", "2yr"))
+dat2 <- data.frame(placebo, lavage, debride, time)
+dat2
+```
+
+
+## Exploring the data
+
+```{r}
+summary(dat2)
+```
+
+```{r}
+library(reshape2)
+dat2_melted <- melt(dat2, id.vars = "time")
+
+ggplot(dat2_melted, aes(x = variable, y = value, fill = variable)) +
+  geom_boxplot() +
+  labs(x = "Treatment", y = "Value", fill = "Treatment") +
+  scale_fill_manual(values = c("red", "blue", "green")) +
+  theme_minimal()
+```
+```{r}
+
+# Plot using ggplot2
+ggplot(dat2_melted, aes(x = time, y = value, color = variable, group= variable)) +
+  geom_point()+
+  geom_line()+
+  labs(x = "Time", y = "Physical Functioning Scores", color = "Treatment") +
+  scale_color_manual(values = c("placebo" = "red", "lavage" = "blue", "debride" = "green")) +
+  theme_minimal()
+
+
+```
+
+
+```{r}
+group <- rep(c(1,2,3), each = 8)
+functioning_scores <- c(48.5,48.3,45.9,47.3,47.0,45.6,48.5,47.7,50.0,53.0,49.5,48.8,49.4,50.4,51.2,53.2,52.1,56.0,51.7,49.5,49.8,52.5,52.8,52.6)
+dat_function <- data.frame(group, functioning_scores)
+dat_function$fgroup <- as.factor(dat_function$group)
+dat_function
+```
+
+## Perform ANOVA to test the hypothesis that all three treatments have a same effect
+
+
+**Null hypothesis**: All three treatments have a same treatment effect (or treatment means)
+$H_0$: $\mu_1 = \mu_2\ = \mu_3$
+
+**Alternative hypothesis**: Three treatments have different effect (or treatment means)
+$H_1$: at least a pair of $\mu_i$ and $\mu_j$ is different
+
+```{r}
+model2 <- lm(functioning_scores ~ fgroup, data = dat_function)
+anova(model2)
+```
+## Design a contrast using Tukey method 
+
+```{r}
+library(emmeans)
+lsmFunction<- lsmeans(model2, ~fgroup)
+print(lsmFunction)
+```
+
+
+```{r}
+tk2<-summary(contrast(lsmFunction, method = "pairwise", adjust = "tukey"),
+    infer=c(T,T), level = 0.95)
+tk2
+```
+
+**Conclusion**: We have sufficient evidence to infer that the mean physical functioning scores of the lavage group and debridement group are higher than those of the placebo group. In other words, the lavage group and debridement group exhibit poorer functioning compared to the placebo group. 
+
+
+
+```{r}
+plot(tk2)
+```
+## Checking assumptions
+
+```{r}
+plot(model2, 1:2)
+```
+
+Both plots looks good, so the constant variance and normality are satisfied.
+
+```{r}
+leveneTest(model2)
+```
+
